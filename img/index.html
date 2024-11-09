@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mortal Kombat 3D</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const geometry = new THREE.BoxGeometry(1, 2, 0.5);
+        const material1 = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const material2 = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        const player1 = new THREE.Mesh(geometry, material1);
+        const player2 = new THREE.Mesh(geometry, material2);
+
+        player1.position.x = -2;
+        player2.position.x = 2;
+
+        scene.add(player1);
+        scene.add(player2);
+
+        let health1 = 100;
+        let health2 = 100;
+
+        const healthBar1 = new THREE.Mesh(
+            new THREE.PlaneGeometry(1, 0.1),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+        );
+        const healthBar2 = new THREE.Mesh(
+            new THREE.PlaneGeometry(1, 0.1),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+        );
+
+        healthBar1.position.set(-2, 2, 0);
+        healthBar2.position.set(2, 2, 0);
+
+        scene.add(healthBar1);
+        scene.add(healthBar2);
+
+        camera.position.z = 5;
+
+        const keys = {};
+        document.addEventListener('keydown', (event) => { keys[event.code] = true; });
+        document.addEventListener('keyup', (event) => { keys[event.code] = false; });
+
+        const projectiles = [];
+        const projectileGeometry = new THREE.SphereGeometry(0.1, 32, 32);
+        const projectileMaterial1 = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const projectileMaterial2 = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+
+        function shootProjectile(player, direction) {
+            const projectile = new THREE.Mesh(projectileGeometry, player === player1 ? projectileMaterial1 : projectileMaterial2);
+            projectile.position.set(player.position.x, player.position.y, 0);
+            projectile.direction = direction;
+            projectiles.push(projectile);
+            scene.add(projectile);
+        }
+
+        function updateProjectiles() {
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const projectile = projectiles[i];
+                projectile.position.x += projectile.direction * 0.1;
+
+                // Check collision with players
+                if (projectile.position.x < player1.position.x + 0.5 && projectile.position.x > player1.position.x - 0.5 && projectile.position.y < player1.position.y + 1 && projectile.position.y > player1.position.y - 1) {
+                    health1 -= 5;
+                    scene.remove(projectile);
+                    projectiles.splice(i, 1);
+                } else if (projectile.position.x < player2.position.x + 0.5 && projectile.position.x > player2.position.x - 0.5 && projectile.position.y < player2.position.y + 1 && projectile.position.y > player2.position.y - 1) {
+                    health2 -= 5;
+                    scene.remove(projectile);
+                    projectiles.splice(i, 1);
+                }
+
+                // Remove projectiles that go off screen
+                if (projectile.position.x < -5 || projectile.position.x > 5) {
+                    scene.remove(projectile);
+                    projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        function updateHealthBars() {
+            healthBar1.scale.x = health1 / 100;
+            healthBar2.scale.x = health2 / 100;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Player movement
+            if (keys['KeyA']) player1.position.x -= 0.1; // Move player 1 left
+            if (keys['KeyD']) player1.position.x += 0.1; // Move player 1 right
+            if (keys['ArrowLeft']) player2.position.x -= 0.1; // Move player 2 left
+            if (keys['ArrowRight']) player2.position.x += 0.1; // Move player 2 right
+
+            // Shooting
+            if (keys['Space']) shootProjectile(player1, 1); // Player 1 shoots
+            if (keys['Enter']) shootProjectile(player2, -1); // Player 2 shoots
+
+            // Update projectiles
+            updateProjectiles();
+
+            // Update health bars
+            updateHealthBars();
+
+            // End game if health is 0
+            if (health1 <= 0 || health2 <= 0) {
+                alert(health1 <= 0 ? "Player 2 wins!" : "Player 1 wins!");
+                document.location.reload();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
